@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "components/device_list.html" import device_list %}
+{% from "components/device_map.html" import device_map %}
+
+{% block title %}設備監控儀表板 - 首頁{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>設備監控儀表板</h1>
+    <button class="btn btn-primary" onclick="refreshDevices()">
+        <i class="bi bi-arrow-clockwise"></i> 重新整理
+    </button>
+</div>
+
+<div id="loading" class="text-center d-none">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">載入中...</span>
+    </div>
+</div>
+
+<div id="error-message" class="alert alert-danger d-none"></div>
+
+<!-- 引入設備列表組件 -->
+{{ device_list() }}
+
+<!-- 引入設備地圖組件 -->
+{{ device_map() }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 重新整理設備列表
+    function refreshDevices() {
+        fetchDevices();
+    }
+
+    // 頁面載入時自動獲取設備列表
+    document.addEventListener('DOMContentLoaded', fetchDevices);
+</script>
+{% endblock %} 

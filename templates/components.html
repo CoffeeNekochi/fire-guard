@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "components/device_list.html" import device_list %}
+{% from "components/device_map.html" import device_map %}
+
+{% block title %}組件預覽{% endblock %}
+
+{% block additional_styles %}
+.component-section {
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+.component-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.component-description {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+
+.preview-area {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+    <h1 class="display-4 mb-3">組件預覽</h1>
+    <p class="lead">這個頁面展示了所有可用的組件，方便開發和測試。</p>
+</div>
+
+<!-- 設備地圖組件展示 -->
+<div class="component-section">
+    <div class="component-header">
+        <h2>設備地圖組件</h2>
+        <div class="component-description">
+            <p>用於在地圖上顯示所有設備的位置。包含以下功能：</p>
+            <ul>
+                <li>即時顯示所有設備位置</li>
+                <li>根據電池電量顯示不同顏色的標記</li>
+                <li>點擊標記顯示設備詳細資訊</li>
+                <li>自動縮放以顯示所有設備</li>
+                <li>每30秒自動更新設備位置</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        {{ device_map() }}
+    </div>
+</div>
+
+<!-- 設備列表組件展示 -->
+<div class="component-section">
+    <div class="component-header">
+        <h2>設備列表組件</h2>
+        <div class="component-description">
+            <p>用於顯示設備狀態和資訊的表格組件。包含以下功能：</p>
+            <ul>
+                <li>顯示設備 ID 和連接狀態</li>
+                <li>電池電量指示器</li>
+                <li>位置資訊</li>
+                <li>即時更新功能</li>
+            </ul>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="refreshDevices()">
+                <i class="bi bi-arrow-clockwise"></i> 重新整理
+            </button>
+        </div>
+    </div>
+
+    <div id="loading" class="text-center d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">載入中...</span>
+        </div>
+    </div>
+
+    <div id="error-message" class="alert alert-danger d-none"></div>
+
+    <div class="preview-area">
+        {{ device_list() }}
+    </div>
+</div>
+
+<!-- 這裡可以添加更多組件的展示區域 -->
+<div class="component-section">
+    <div class="component-header">
+        <h2>更多組件</h2>
+        <div class="component-description">
+            <p>未來將添加更多組件...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 重新整理設備列表
+    function refreshDevices() {
+        fetchDevices();
+    }
+
+    // 頁面載入時自動獲取設備列表
+    document.addEventListener('DOMContentLoaded', fetchDevices);
+</script>
+{% endblock %} 

@@ -1,0 +1,464 @@
+{% macro device_map() %}
+<style>
+.map-container {
+    width: 100%;
+    height: 500px;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.map-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.device-marker {
+    width: 20px;
+    height: 20px;
+    background-color: #3498db;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.device-marker:hover {
+    transform: scale(1.2);
+}
+
+.device-info {
+    position: absolute;
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    display: none;
+}
+</style>
+
+<div id="map-component">
+    <div class="map-container">
+        <iframe src="https://api.maptiler.com/maps/019662a2-f583-751a-89bc-a27c14118968/style.json?key=EVEDI8Mg8ji8ysdttI7e"
+                title="設備位置地圖"></iframe>
+    </div>
+</div>
+
+<script>
+// MapLibre GL JS 的設置
+const loadMapLibre = () => {
+    if (window.maplibregl) return Promise.resolve();
+    
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+
+        const link = document.createElement('link');
+        link.href = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+    });
+};
+
+class DeviceMap {
+    constructor(containerId) {
+        this.containerId = containerId;
+        this.devices = [];
+        this.map = null;
+        this.markers = {};
+        this.isFirstLoad = true;  // 添加首次載入標記
+    }
+
+    async initialize() {
+        await loadMapLibre();
+        
+        const container = document.getElementById(this.containerId);
+        const mapContainer = document.createElement('div');
+        mapContainer.style.width = '100%';
+        mapContainer.style.height = '500px';
+        container.innerHTML = '';
+        container.appendChild(mapContainer);
+
+        // 定義地圖樣式
+        const styles = {
+            'topographic': 'https://api.maptiler.com/maps/019662a2-f583-751a-89bc-a27c14118968/style.json?key=EVEDI8Mg8ji8ysdttI7e',
+            'satellite': 'https://api.maptiler.com/maps/019662a8-f714-7750-be18-3bb661b7b550/style.json?key=EVEDI8Mg8ji8ysdttI7e'
+        };
+
+        // 設置繁體中文的函數
+        const setChineseLanguage = (map) => {
+            const style = map.getStyle();
+            const layers = style.layers;
+
+            layers.forEach(layer => {
+                if (layer.layout && layer.layout['text-field']) {
+                    map.setLayoutProperty(layer.id, 'text-field', [
+                        'coalesce',
+                        ['get', 'name:zh-Hant'],
+                        ['get', 'name:zh'],
+                        ['get', 'name']
+                    ]);
+                }
+            });
+        };
+
+        this.map = new maplibregl.Map({
+            container: mapContainer,
+            style: styles.topographic,
+            center: [120.66651, 24.24197],
+            zoom: 10.9,
+            localIdeographFontFamily: "'Noto Sans TC', sans-serif"
+        });
+
+        // 初始化時設置繁體中文
+        this.map.on('style.load', () => {
+            setChineseLanguage(this.map);
+        });
+
+        // 添加樣式切換控制
+        const styleControl = document.createElement('div');
+        styleControl.className = 'maplibregl-ctrl maplibregl-ctrl-group style-control';
+        styleControl.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: flex;
+            overflow: hidden;
+            padding: 2px;
+        `;
+
+        const createButton = (text, styleName) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'style-switch-btn';
+            button.innerHTML = text;
+            button.onclick = async () => {
+                const currentMarkers = this.markers;
+                const currentDevices = this.devices;
+                
+                // 立即更新按鈕狀態
+                document.querySelectorAll('.style-switch-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+                
+                // 保存當前視圖狀態
+                const center = this.map.getCenter();
+                const zoom = this.map.getZoom();
+                const bearing = this.map.getBearing();
+                const pitch = this.map.getPitch();
+
+                try {
+                    // 獲取新樣式
+                    const response = await fetch(styles[styleName]);
+                    const newStyle = await response.json();
+
+                    // 切換地圖樣式
+                    this.map.setStyle(newStyle);
+
+                    // 在樣式加載完成後恢復標記和視圖狀態
+                    this.map.once('style.load', () => {
+                        // 設置繁體中文
+                        setChineseLanguage(this.map);
+
+                        // 恢復視圖狀態
+                        this.map.setCenter(center);
+                        this.map.setZoom(zoom);
+                        this.map.setBearing(bearing);
+                        this.map.setPitch(pitch);
+
+                        // 重新添加標記
+                        this.markers = currentMarkers;
+                        this.devices = currentDevices;
+                        this.updateMarkers();
+                    });
+                } catch (error) {
+                    console.error('切換地圖樣式時發生錯誤:', error);
+                    // 如果發生錯誤，恢復原來的按鈕狀態
+                    document.querySelectorAll('.style-switch-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    if (styleName === 'topographic') {
+                        topoButton.classList.add('active');
+                    } else {
+                        satButton.classList.add('active');
+                    }
+                }
+            };
+            return button;
+        };
+
+        // 添加樣式切換按鈕
+        const topoButton = createButton('地形', 'topographic');
+        const satButton = createButton('衛星', 'satellite');
+        topoButton.classList.add('active'); // 預設選中地形圖
+
+        styleControl.appendChild(topoButton);
+        styleControl.appendChild(satButton);
+        mapContainer.appendChild(styleControl);
+
+        // 添加樣式
+        const style = document.createElement('style');
+        style.textContent = `
+            .style-control {
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+            }
+            .style-switch-btn {
+                padding: 4px 8px;
+                background: white;
+                border: none;
+                cursor: pointer;
+                outline: none;
+                font-size: 13px;
+                font-weight: 500;
+                font-family: 'Noto Sans TC', sans-serif;
+                color: #666;
+                transition: all 0.2s ease;
+                margin: 0;
+                min-width: 44px;
+                height: 24px;
+                line-height: 24px;
+                position: relative;
+                border-radius: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                vertical-align: middle;
+                box-sizing: border-box;
+            }
+            .style-switch-btn:not(:last-child) {
+                margin-right: 2px;
+            }
+            .style-switch-btn:hover {
+                background: #f0f0f0;
+                color: #333;
+            }
+            .style-switch-btn.active {
+                background: #4264fb;
+                color: white;
+                border-top: none;
+   
+        
+            }
+            @media (max-width: 768px) {
+                .style-switch-btn,
+                .style-switch-btn.active {
+                    padding: 3px 6px;
+                    font-size: 12px;
+                    min-width: 40px;
+                    height: 22px;
+                    line-height: 22px;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 添加地圖控制項
+        this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
+        
+        // 添加全螢幕控制
+        this.map.addControl(new maplibregl.FullscreenControl());
+
+        // 添加 Noto Sans TC 字體
+        const fontStyle = document.createElement('style');
+        fontStyle.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        `;
+        document.head.appendChild(fontStyle);
+    }
+
+    updateDevices(devices) {
+        this.devices = devices;
+        this.updateMarkers();
+    }
+
+    updateMarkers() {
+        if (!this.map) return;
+
+        // 移除舊的標記
+        Object.values(this.markers).forEach(marker => marker.remove());
+        this.markers = {};
+
+        // 添加新的標記
+        this.devices.forEach(device => {
+            // 創建自定義標記 HTML
+            const el = document.createElement('div');
+            el.className = 'custom-marker';
+            
+            // 檢查所有設備狀態
+            const isMainDeviceOffline = device.device_status === 'disconnect' || device.device_status === 'inactive';
+            const isTemperatureSensorOffline = device.temperature_sensor_status === 'disconnect' || device.temperature_sensor_status === 'inactive';
+            const isWindSensorOffline = device.wind_direction_sensor_status === 'disconnect' || device.wind_direction_sensor_status === 'inactive';
+            const hasOfflineDevices = isMainDeviceOffline || isTemperatureSensorOffline || isWindSensorOffline;
+
+            el.innerHTML = `
+                <div class="marker-icon-background ${hasOfflineDevices ? 'marker-disconnected' : ''}"
+                     style="border-color: ${hasOfflineDevices ? '#dc3545' : 'white'}">
+                    <div class="marker-icon" style="color: ${this.getBatteryColor(device.battery_level)}">
+                        <i class="bi bi-broadcast-pin"></i>
+                    </div>
+                </div>
+            `;
+
+            // 添加自定義樣式
+            const style = document.createElement('style');
+            if (!document.getElementById('marker-styles')) {
+                style.id = 'marker-styles';
+                style.textContent = `
+                    .custom-marker {
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    }
+                    .marker-icon-background {
+                        background: white;
+                        border-radius: 50%;
+                        padding: 6px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        border: 2px solid white;
+                        transition: border-color 0.3s ease;
+                    }
+                    .marker-icon {
+                        font-size: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .marker-icon i {
+                        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+                    }
+                    .custom-marker:hover {
+                        transform: scale(1.2);
+                    }
+                    .custom-marker:hover .marker-icon-background {
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                    }
+                    @keyframes disconnectedPulse {
+                        0% {
+                            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+                        }
+                        70% {
+                            box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+                        }
+                        100% {
+                            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+                        }
+                    }
+                    .marker-disconnected {
+                        animation: disconnectedPulse 2s infinite;
+                        border-color: #dc3545 !important;
+                    }
+                    .maplibregl-popup {
+                        max-width: 300px;
+                    }
+                    .maplibregl-popup-content {
+                        padding: 15px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // 創建彈出信息
+            const popup = new maplibregl.Popup({ 
+                offset: 25,
+                closeButton: false,
+                closeOnClick: true
+            })
+            .setHTML(`
+                <div>
+                    <h6 class="mb-2">設備 ${device.id}</h6>
+                    <div class="mb-2">
+                        <i class="bi bi-broadcast me-1"></i> 
+                        <span class="${isMainDeviceOffline ? 'text-danger' : 'text-success'}">
+                            主設備: ${device.device_status === 'disconnect' ? '已斷線' : 
+                                    device.device_status === 'inactive' ? '異常' : '已連接'}
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <i class="bi bi-thermometer-half me-1"></i>
+                        <span class="${isTemperatureSensorOffline ? 'text-danger' : 'text-success'}">
+                            溫度感測器: ${device.temperature_sensor_status === 'disconnect' ? '已斷線' :
+                                        device.temperature_sensor_status === 'inactive' ? '異常' : '已連接'}
+                        </span>
+                        ${device.temperature ? `<br><small class="text-muted ms-3">當前溫度: ${device.temperature}°C</small>` : ''}
+                    </div>
+                    <div class="mb-2">
+                        <i class="bi bi-wind me-1"></i>
+                        <span class="${isWindSensorOffline ? 'text-danger' : 'text-success'}">
+                            風向感測器: ${device.wind_direction_sensor_status === 'disconnect' ? '已斷線' :
+                                        device.wind_direction_sensor_status === 'inactive' ? '異常' : '已連接'}
+                        </span>
+                        ${device.wind_direction ? `<br><small class="text-muted ms-3">當前風向: ${device.wind_direction}°</small>` : ''}
+                    </div>
+                    <div>
+                        <i class="bi bi-battery me-1"></i> 電池: ${device.battery_level}%
+                    </div>
+                </div>
+            `);
+
+            // 創建標記
+            const marker = new maplibregl.Marker({
+                element: el,
+                anchor: 'bottom'
+            })
+            .setLngLat([device.longitude, device.latitude])
+            .setPopup(popup)
+            .addTo(this.map);
+
+            this.markers[device.id] = marker;
+        });
+
+        // 只在首次載入時調整地圖視角
+        if (this.isFirstLoad && this.devices.length > 0) {
+            const bounds = new maplibregl.LngLatBounds();
+            this.devices.forEach(device => {
+                bounds.extend([device.longitude, device.latitude]);
+            });
+            this.map.fitBounds(bounds, { padding: 50 });
+            this.isFirstLoad = false;  // 設置首次載入標記為 false
+        }
+    }
+
+    getBatteryColor(level) {
+        if (level <= 40) return '#E74C3C';
+        if (level <= 60) return '#F1C40F';
+        if (level <= 80) return '#27AE60';
+        return '#2ECC71';
+    }
+}
+
+// 初始化地圖
+document.addEventListener('DOMContentLoaded', async () => {
+    window.deviceMap = new DeviceMap('map-component');
+    await window.deviceMap.initialize();
+
+    // 訂閱設備更新
+    async function updateDevices() {
+        try {
+            const response = await fetch('/api/devices');
+            const devices = await response.json();
+            window.deviceMap.updateDevices(devices);
+        } catch (error) {
+            console.error('無法獲取設備資料:', error);
+        }
+    }
+
+    // 初始更新和定時更新
+    updateDevices();
+    setInterval(updateDevices, 30000); // 每30秒更新一次
+});
+</script>
+{% endmacro %} 
