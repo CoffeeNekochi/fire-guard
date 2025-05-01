@@ -2,40 +2,91 @@
 {% from "components/device_list.html" import device_list %}
 {% from "components/device_map.html" import device_map %}
 
-{% block title %}設備監控儀表板 - 首頁{% endblock %} 
+{% block title %}火盾智控-野火監控系統{% endblock %}
+
+{% block additional_styles %}
+{{ super() }}
+  /*讓黑底 Navbar 黏在最上方*/
+  nav.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  /*地圖 + 設備列表』共用捲動容器  ──  外頁不再捲動 */
+  .main-scroll-lock {
+    height: calc(100vh - 56px);   /* 56px = Navbar 高度，依實際值調整 */
+    overflow: hidden;             /* ⛔️ 鎖住整頁捲動 */
+    display: flex;
+    flex-direction: column;
+  }
+
+  /*地圖區塊固定高度（依需要微調） */
+  .map-area {
+    margin-top: 1rem;
+    flex: 0 0 400px;              /* 400px = 地圖高度 */
+  }
+
+  /*列表區塊佔滿剩餘空間，自己帶垂直捲軸 */
+  .device-list-wrapper {
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  /*表頭 sticky：相對於 .device-list-wrapper */
+  .device-list-wrapper th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 20;
+  }
+
+  /* 去掉 bootstrap 表格預設的額外下邊距 */
+  .device-list-wrapper table {
+    margin-bottom: 0;
+  }
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1>設備監控儀表板</h1>
-  <button class="btn btn-primary" onclick="refreshDevices()">
-    <i class="bi bi-arrow-clockwise"></i> 重新整理
-  </button>
-</div>
-
-<div id="loading" class="text-center d-none">
-  <div class="spinner-border text-primary" role="status">
-    <span class="visually-hidden">載入中...</span>
+  <div class="d-flex justify-content-end mb-2">
+    <!--button class="btn btn-primary" onclick="refreshDevices()">
+      <i class="bi bi-arrow-clockwise"></i> 重新整理
+    </button-->
   </div>
-</div>
 
-<div id="error-message" class="alert alert-danger d-none"></div>
+  <div id="loading" class="text-center d-none">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">載入中...</span>
+    </div>
+  </div>
 
-<!-- 引入設備地圖組件 -->
-{{ device_map() }}
+  <div id="error-message" class="alert alert-danger d-none"></div>
 
-<!-- 引入設備列表組件 -->
-{{ device_list() }}
+  <!-- ⭐ 主容器：地圖(固定高) + 列表(可捲動) ⭐ -->
+  <div class="main-scroll-lock">
 
+    <!-- 地圖區 -->
+    <div class="map-area">
+      {{ device_map() }}
+    </div>
+
+    <!-- 設備列表區（自帶捲軸） -->
+    <div class="device-list-wrapper">
+      {{ device_list() }}
+    </div>
+
+  </div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
-    // 重新整理設備列表
-    function refreshDevices() {
-        fetchDevices();
-    }
+  // 重新整理設備列表
+  function refreshDevices() {
+    fetchDevices();
+  }
 
-    // 頁面載入時自動獲取設備列表
-    document.addEventListener('DOMContentLoaded', fetchDevices);
+  // 頁面載入時自動獲取設備列表
+  document.addEventListener('DOMContentLoaded', fetchDevices);
 </script>
-{% endblock %} 
+{% endblock %}
