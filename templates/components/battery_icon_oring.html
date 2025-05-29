@@ -1,0 +1,55 @@
+{% macro battery_icon(level) %}
+<style>
+@keyframes battery-charging {
+    0% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.battery-icon {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    border: 2px solid currentColor;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+}
+
+.battery-icon::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 10px;
+    border-radius: 0 2px 2px 0;
+    background-color: currentColor;
+}
+
+.battery-level {
+    height: 100%;
+    border-radius: 1px;
+    transition: all 0.3s ease;
+}
+
+.battery-charging {
+    animation: battery-charging 1s infinite alternate;
+}
+</style>
+
+{% set color = {
+    0: '#4C0392B',   {# 20% #}
+    1: '#E74C3C',    {# 40% #}
+    2: '#F1C40F',    {# 60% #}
+    3: '#27AE60',    {# 80% #}
+    4: '#2ECC71'     {# 100% #}
+}[((level | int) / 20) | int] %}
+
+<div class="battery-icon" style="color: {{ color }}">
+    <div class="battery-level" 
+         style="width: {{ level }}%; background-color: {{ color }};">
+    </div>
+</div>
+{% endmacro %} 

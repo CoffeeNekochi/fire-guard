@@ -1,25 +1,23 @@
 {% macro device_list() %}
 <div id="device-list-component">
-    <!-- 固定表頭 -->
-    <div class="device-list-header" style="position: sticky; top: 0; z-index: 30; background: #fff;">
-        <table class="table mb-0" style="table-layout: fixed; width: 100%;">
-            <thead>
-                <tr>
-                    <th>設備 ID</th>
-                    <th>電池狀態</th>
-                    <th>位置</th>
-                    <th>狀態</th>
-                </tr>
-            </thead>
-        </table>
-    </div>
-    <!-- 滾動資料列 -->
-    <div class="device-list-body" style="max-height: 420px; overflow-y: auto;">
-        <table class="table mb-0" style="table-layout: fixed; width: 100%;">
-            <tbody id="devices-list">
-                <!-- 資料列動態產生 -->
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>設備 ID</th>
+                            <th>電池狀態</th>
+                            <th>位置</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devices-list">
+                        <!-- 設備列表將在這裡動態生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
