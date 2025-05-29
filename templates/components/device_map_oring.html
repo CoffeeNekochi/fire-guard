@@ -295,7 +295,7 @@ class DeviceMap {
         this.devices.forEach(device => {
             // 創建自定義標記 HTML
             const el = document.createElement('div');
-            el.className = 'custom-marker' + (device.id === 'device_danger' ? ' marker-danger' : '');
+            el.className = 'custom-marker';
             
             // 檢查所有設備狀態
             const isMainDeviceOffline = device.device_status === 'disconnect' || device.device_status === 'inactive';
@@ -359,21 +359,6 @@ class DeviceMap {
                         animation: disconnectedPulse 2s infinite;
                         border-color: #dc3545 !important;
                     }
-                    @keyframes dangerPulse {
-                        0% {
-                            box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.6);
-                        }
-                        70% {
-                            box-shadow: 0 0 0 16px rgba(255, 0, 0, 0);
-                        }
-                        100% {
-                            box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-                        }
-                    }
-                    .marker-danger .marker-icon-background {
-                        animation: dangerPulse 1.2s infinite;
-                        border-color: #ff3333 !important;
-                    }
                     .maplibregl-popup {
                         max-width: 300px;
                     }
@@ -421,13 +406,6 @@ class DeviceMap {
                     <div>
                         <i class="bi bi-battery me-1"></i> 電池: ${device.battery_level}%
                     </div>
-                    <div class="mt-2">
-                        <strong>現場影像</strong><br>
-                        ${device.id === 'device_004' && device.device_status === 'disconnect'
-                            ? '<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:#f8f9fa;border-radius:6px;color:#dc3545;font-weight:bold;">無法讀取</div>'
-                            : `<video src="${device.id === 'device_danger' ? '/static/videos/test2.mp4' : '/static/videos/test.mp4'}" controls autoplay muted loop style="width:100%;height:auto;max-height:180px;object-fit:cover;border-radius:6px;"></video>`
-                        }
-                    </div>
                 </div>
             `);
 
@@ -439,19 +417,6 @@ class DeviceMap {
             .setLngLat([device.longitude, device.latitude])
             .setPopup(popup)
             .addTo(this.map);
-
-            // 新增：popup 打開時強制播放影片
-            marker.getPopup().on('open', () => {
-                setTimeout(() => {
-                    const popups = document.querySelectorAll('.maplibregl-popup');
-                    popups.forEach(popupEl => {
-                        const video = popupEl.querySelector('video');
-                        if (video) {
-                            video.play().catch(() => {});
-                        }
-                    });
-                }, 100);
-            });
 
             this.markers[device.id] = marker;
         });

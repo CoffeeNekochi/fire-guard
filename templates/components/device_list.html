@@ -14,7 +14,7 @@
         </table>
     </div>
     <!-- 滾動資料列 -->
-    <div class="device-list-body" style="max-height: 420px; overflow-y: auto;">
+    <div class="device-list-body" style="max-height: calc(7 * 56px); overflow-y: auto;">
         <table class="table mb-0" style="table-layout: fixed; width: 100%;">
             <tbody id="devices-list">
                 <!-- 資料列動態產生 -->
@@ -135,47 +135,32 @@
 
     // 位置資訊生成函數
     async function getLocationInfo(device) {
+        // 只顯示縣市名稱（city/county 擇一）+ (緯度, 經度)
         try {
             // 檢查緩存
             const cachedAddress = addressCache.get(device.latitude, device.longitude);
+            let cityOrCounty = '';
             if (cachedAddress) {
-                return `
-                    <div class="d-flex flex-column">
-                        <small><i class="bi bi-geo-alt"></i> ${cachedAddress}</small>
-                    </div>
-                `;
+                cityOrCounty = cachedAddress.split(',')[0];
+            } else {
+                // 從API獲取
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${device.latitude}&lon=${device.longitude}&zoom=10&addressdetails=1&accept-language=zh-TW`);
+                const data = await response.json();
+                if (data.address) {
+                    cityOrCounty = data.address.city || data.address.county || '';
+                }
+                addressCache.save(device.latitude, device.longitude, cityOrCounty);
             }
-
-            // 如果緩存中沒有，則從API獲取
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${device.latitude}&lon=${device.longitude}&zoom=18&addressdetails=1&accept-language=zh-TW`);
-            const data = await response.json();
-            
-            // 從 addressdetails 中提取所需的地址部分
-            const addressParts = [];
-            if (data.address) {
-                if (data.address.city) addressParts.push(data.address.city);
-                if (data.address.county) addressParts.push(data.address.county);
-                if (data.address.district) addressParts.push(data.address.district);
-                if (data.address.suburb) addressParts.push(data.address.suburb);
-                if (data.address.village) addressParts.push(data.address.village);
-                if (data.address.neighbourhood) addressParts.push(data.address.neighbourhood);
-            }
-            
-            const address = addressParts.join(', ');
-            
-            // 保存到緩存
-            addressCache.save(device.latitude, device.longitude, address);
-            
             return `
                 <div class="d-flex flex-column">
-                    <small><i class="bi bi-geo-alt"></i> ${address}</small>
+                    <small><i class="bi bi-geo-alt"></i> ${cityOrCounty} (${device.latitude.toFixed(5)}, ${device.longitude.toFixed(5)})</small>
                 </div>
             `;
         } catch (error) {
             console.error('無法獲取地址:', error);
             return `
                 <div class="d-flex flex-column">
-                    <small><i class="bi bi-geo-alt"></i> 無法獲取地址</small>
+                    <small><i class="bi bi-geo-alt"></i> (${device.latitude.toFixed(5)}, ${device.longitude.toFixed(5)})</small>
                 </div>
             `;
         }
