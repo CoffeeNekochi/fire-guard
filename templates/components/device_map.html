@@ -38,6 +38,64 @@
     z-index: 1000;
     display: none;
 }
+
+.maplibregl-popup,
+.maplibregl-popup-content {
+  max-width: 500px !important;
+  width: 500px !important;
+  min-width: 320px !important;
+  box-sizing: border-box !important;
+}
+
+.maplibregl-popup-content > div {
+    display: flex !important;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 40px;
+}
+
+.device-alert-btns {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  margin-top: 12px;
+  width: 100%;
+}
+.device-alert-btn {
+  border: none;
+  border-radius: 20px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  min-width: 140px;
+  text-align: center;
+  white-space: nowrap;
+}
+.device-alert-btn.alert-on {
+  background: #E74C3C;
+}
+.device-alert-btn.alert-off {
+  background: #aaa;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.device-alert-btn.stop {
+  background: #F4B266;
+  color: #fff;
+}
+.device-alert-btn:active {
+  opacity: 0.8;
+}
+@media (max-width: 600px) {
+  .device-alert-btn {
+    font-size: 13px;
+    padding: 8px 10px;
+    min-width: 90px;
+  }
+}
 </style>
 
 <div id="map-component">
@@ -375,12 +433,18 @@ class DeviceMap {
                         border-color: #ff3333 !important;
                     }
                     .maplibregl-popup {
-                        max-width: 300px;
+                        max-width: 500px;
                     }
                     .maplibregl-popup-content {
-                        padding: 15px;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                        max-width: 450px !important;
+                        min-width: 320px;
+                        overflow: hidden !important;
+                    }
+                    .maplibregl-popup-content > div {
+                        width: 100%;
+                    }
+                    .maplibregl-popup-content strong {
+                        white-space: nowrap;
                     }
                 `;
                 document.head.appendChild(style);
@@ -393,40 +457,51 @@ class DeviceMap {
                 closeOnClick: true
             })
             .setHTML(`
-                <div>
-                    <h6 class="mb-2">設備 ${device.id}</h6>
-                    <div class="mb-2">
-                        <i class="bi bi-broadcast me-1"></i> 
-                        <span class="${isMainDeviceOffline ? 'text-danger' : 'text-success'}">
-                            主設備: ${device.device_status === 'disconnect' ? '已斷線' : 
-                                    device.device_status === 'inactive' ? '異常' : '已連接'}
-                        </span>
+                <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 24px; min-width: 320px; width: fit-content; max-width: 500px; box-sizing: border-box;">
+                    <div style="flex: 1 1 auto; min-width: 0;">
+                        <h6 class="mb-2">設備 ${device.id}</h6>
+                        <div class="mb-2">
+                            <i class="bi bi-broadcast me-1"></i> 
+                            <span class="${isMainDeviceOffline ? 'text-danger' : 'text-success'}">
+                                主設備: ${device.device_status === 'disconnect' ? '已斷線' : 
+                                        device.device_status === 'inactive' ? '異常' : '已連接'}
+                            </span>
+                        </div>
+                        <div class="mb-2">
+                            <i class="bi bi-thermometer-half me-1"></i>
+                            <span class="${isTemperatureSensorOffline ? 'text-danger' : 'text-success'}">
+                                溫度感測器: ${device.temperature_sensor_status === 'disconnect' ? '已斷線' :
+                                            device.temperature_sensor_status === 'inactive' ? '異常' : '已連接'}
+                            </span>
+                            ${device.temperature ? `<br><small class="text-muted ms-3">當前溫度: ${device.temperature}°C</small>` : ''}
+                        </div>
+                        <div class="mb-2">
+                            <i class="bi bi-wind me-1"></i>
+                            <span class="${isWindSensorOffline ? 'text-danger' : 'text-success'}">
+                                風向感測器: ${device.wind_direction_sensor_status === 'disconnect' ? '已斷線' :
+                                            device.wind_direction_sensor_status === 'inactive' ? '異常' : '已連接'}
+                            </span>
+                            ${device.wind_direction ? `<br><small class="text-muted ms-3">當前風向: ${device.wind_direction}°</small>` : ''}
+                        </div>
+                        <div>
+                            <i class="bi bi-battery me-1"></i> 電池: ${device.battery_level}%
+                        </div>
                     </div>
-                    <div class="mb-2">
-                        <i class="bi bi-thermometer-half me-1"></i>
-                        <span class="${isTemperatureSensorOffline ? 'text-danger' : 'text-success'}">
-                            溫度感測器: ${device.temperature_sensor_status === 'disconnect' ? '已斷線' :
-                                        device.temperature_sensor_status === 'inactive' ? '異常' : '已連接'}
-                        </span>
-                        ${device.temperature ? `<br><small class="text-muted ms-3">當前溫度: ${device.temperature}°C</small>` : ''}
-                    </div>
-                    <div class="mb-2">
-                        <i class="bi bi-wind me-1"></i>
-                        <span class="${isWindSensorOffline ? 'text-danger' : 'text-success'}">
-                            風向感測器: ${device.wind_direction_sensor_status === 'disconnect' ? '已斷線' :
-                                        device.wind_direction_sensor_status === 'inactive' ? '異常' : '已連接'}
-                        </span>
-                        ${device.wind_direction ? `<br><small class="text-muted ms-3">當前風向: ${device.wind_direction}°</small>` : ''}
-                    </div>
-                    <div>
-                        <i class="bi bi-battery me-1"></i> 電池: ${device.battery_level}%
-                    </div>
-                    <div class="mt-2">
+                    <div style="flex: 0 0 200px; max-width: 220px; width: 220px; display: flex; flex-direction: column; align-items: center;">
                         <strong>現場影像</strong><br>
                         ${device.id === 'device_004' && device.device_status === 'disconnect'
                             ? '<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:#f8f9fa;border-radius:6px;color:#dc3545;font-weight:bold;">無法讀取</div>'
-                            : `<video src="${device.id === 'device_danger' ? '/static/videos/test2.mp4' : '/static/videos/test.mp4'}" controls autoplay muted loop style="width:100%;height:auto;max-height:180px;object-fit:cover;border-radius:6px;"></video>`
+                            : `<video src="${device.id === 'device_danger' ? '/static/videos/test2.mp4' : '/static/videos/test.mp4'}" controls autoplay muted loop style="width:200px;height:auto;max-width:200px;max-height:120px;object-fit:cover;border-radius:6px;display:block;margin:0 auto;"></video>`
                         }
+                        <div class="device-alert-btns" data-device="${device.id}" style="width:200px;justify-content:center;">
+                            ${device.id === 'device_danger' ? `
+                              <button class="device-alert-btn alert-on" data-action="toggle">Turn off alert</button>
+                              <button class="device-alert-btn stop" data-action="stop">Stop for 5 mins</button>
+                            ` : `
+                              <button class="device-alert-btn alert-off" disabled>Turn off alert</button>
+                              <button class="device-alert-btn alert-off" disabled>Stop for 5 mins</button>
+                            `}
+                        </div>
                     </div>
                 </div>
             `);
@@ -454,6 +529,66 @@ class DeviceMap {
             });
 
             this.markers[device.id] = marker;
+
+            const markerIconBg = el.querySelector('.marker-icon-background');
+
+            setTimeout(() => {
+                const popupEl = document.querySelector('.maplibregl-popup-content');
+                if (!popupEl) return;
+                const btns = popupEl.querySelector('.device-alert-btns');
+                if (!btns) return;
+
+                if (btns.dataset.device === 'device_danger') {
+                    const toggleBtn = btns.querySelector('[data-action="toggle"]');
+                    const stopBtn = btns.querySelector('[data-action="stop"]');
+
+                    // 初始化動畫狀態與按鈕文字
+                    function updateDangerUI() {
+                        if (window.dangerAlertState[device.id]) {
+                            markerIconBg.classList.add('marker-danger');
+                            toggleBtn.textContent = 'Turn off alert';
+                            toggleBtn.classList.add('alert-on');
+                            toggleBtn.classList.remove('alert-off');
+                        } else {
+                            markerIconBg.classList.remove('marker-danger');
+                            toggleBtn.textContent = 'Turn on alert';
+                            toggleBtn.classList.remove('alert-on');
+                            toggleBtn.classList.add('alert-off');
+                        }
+                    }
+                    updateDangerUI();
+
+                    // 切換開關
+                    toggleBtn.onclick = () => {
+                        // 若 stopBtn 正在倒數，不能切換
+                        if (stopBtn.disabled) return;
+                        window.dangerAlertState[device.id] = !window.dangerAlertState[device.id];
+                        updateDangerUI();
+                    };
+
+                    // 5分鐘暫停
+                    stopBtn.onclick = () => {
+                        if (stopBtn.disabled) return;
+                        window.dangerAlertState[device.id] = false;
+                        updateDangerUI();
+                        stopBtn.disabled = true;
+                        stopBtn.textContent = 'Stopped (5 mins)';
+                        let remain = 300;
+                        // 顯示倒數
+                        const timer = setInterval(() => {
+                            remain--;
+                            stopBtn.textContent = `Stopped (${Math.floor(remain/60)}:${('0'+(remain%60)).slice(-2)})`;
+                        }, 1000);
+                        window.dangerAlertTimeouts[device.id] = setTimeout(() => {
+                            clearInterval(timer);
+                            window.dangerAlertState[device.id] = true;
+                            updateDangerUI();
+                            stopBtn.disabled = false;
+                            stopBtn.textContent = 'Stop for 5 mins';
+                        }, 5 * 60 * 1000);
+                    };
+                }
+            }, 200);
         });
 
         // 只在首次載入時調整地圖視角
@@ -465,6 +600,13 @@ class DeviceMap {
             this.map.fitBounds(bounds, { padding: 50 });
             this.isFirstLoad = false;  // 設置首次載入標記為 false
         }
+
+        // 初始化全域狀態
+        if (!window.dangerAlertState) window.dangerAlertState = {};
+        if (window.dangerAlertTimeouts) {
+            Object.values(window.dangerAlertTimeouts).forEach(clearTimeout);
+        }
+        window.dangerAlertTimeouts = {};
     }
 
     getBatteryColor(level) {
